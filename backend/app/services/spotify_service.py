@@ -17,6 +17,7 @@ class SpotifyIngestionService:
     async def import_user_data(self, spotify_user_id: str, access_token: str) -> Dict[str, Any]:
         """Importa i dati dell'utente da Spotify nel knowledge graph"""
         try:
+            logger.info(f"🔄 Starting import_user_data for {spotify_user_id}")
             results = {
                 "user_created": False,
                 "artists_imported": 0,
@@ -26,23 +27,36 @@ class SpotifyIngestionService:
             }
             
             # 1. Crea o aggiorna nodo Utente
+            logger.info(f"👤 Getting user profile for {spotify_user_id}")
             user_profile = await spotify_client.get_user_profile(access_token)
+            logger.info(f"👤 Creating/updating user node for {spotify_user_id}")
             results["user_created"] = self._create_or_update_user(spotify_user_id, user_profile)
+            logger.info(f"👤 User created/updated: {results['user_created']}")
             
             # 2. Importa top artists (short, medium, long term)
+            logger.info(f"🎵 Starting artists import for {spotify_user_id}")
             for time_range in ["short_term", "medium_term", "long_term"]:
+                logger.info(f"🎵 Getting top artists for {time_range}")
                 top_artists = await spotify_client.get_user_top_artists(
                     access_token, time_range=time_range, limit=50
                 )
+                artist_count = len(top_artists.get("items", []))
+                logger.info(f"🎵 Found {artist_count} artists for {time_range}")
                 for artist_data in top_artists.get("items", []):
                     self._create_or_update_artist(artist_data)
                     results["artists_imported"] += 1
+            logger.info(f"🎵 Total artists imported: {results['artists_imported']}")
             
             # 3. Importa top tracks (short, medium, long term)
+            logger.info(f"🎵 Starting tracks import for {spotify_user_id}")
             for time_range in ["short_term", "medium_term", "long_term"]:
+                logger.info(f"🎵 Getting top tracks for {time_range}")
                 top_tracks = await spotify_client.get_user_top_tracks(
                     access_token, time_range=time_range, limit=50
                 )
+                track_count = len(top_tracks.get("items", []))
+                logger.info(f"🎵 Found {track_count} tracks for {time_range}")
+                
                 for track_data in top_tracks.get("items", []):
                     # Importa track, album e artisti
                     track_result = await self._import_track_with_relations(track_data, access_token)
@@ -57,8 +71,13 @@ class SpotifyIngestionService:
                         time_range
                     )
                     results["relationships_created"] += 1
+                    
+            logger.info(f"🎵 Total tracks imported: {results['tracks_imported']}")
+            logger.info(f"🎵 Total albums imported: {results['albums_imported']}")
+            logger.info(f"🎵 Total relationships created: {results['relationships_created']}")
             
             # 4. Aggiorna timestamp ultima sincronizzazione
+            logger.info(f"⏰ Updating last sync timestamp for {spotify_user_id}")
             self._update_user_last_sync(spotify_user_id)
             
             logger.info(f"Import completed for user {spotify_user_id}: {results}")

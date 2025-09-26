@@ -39,7 +39,11 @@ async def shutdown_event():
 
 # Configure CORS
 logger.info(f"CORS Origins loaded: {settings.CORS_ORIGINS}")
-cors_origins = settings.CORS_ORIGINS + ["http://localhost:5173", "http://127.0.0.1:5173"]
+cors_origins = settings.CORS_ORIGINS + [
+    "http://localhost:5173", 
+    "http://127.0.0.1:5173",
+    "https://bryanna-bacillary-crammingly.ngrok-free.app"
+]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
@@ -66,7 +70,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8000,
+        port=8002,
         reload=settings.DEBUG,
         log_level="info" if not settings.DEBUG else "debug"
     )

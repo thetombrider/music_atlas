@@ -48,7 +48,7 @@ async def get_user_top_artists(
     current_user: dict = Depends(get_current_active_user),
     spotify_token: str = Depends(get_valid_spotify_token)
 ):
-    """Ottiene i top artists dell'utente da Spotify"""
+    """Ottiene i top artists dell'utente dal database Neo4j o da Spotify se non disponibili"""
     try:
         if time_range not in ["short_term", "medium_term", "long_term"]:
             raise HTTPException(
@@ -59,6 +59,49 @@ async def get_user_top_artists(
         if limit > 50:
             limit = 50
         
+        spotify_user_id = current_user["spotify_user_id"]
+        
+        # Prima prova a leggere dal database Neo4j
+        from app.database.connection import neo4j_db
+        
+        query = """
+        MATCH (u:Utente {spotify_user_id: $spotify_user_id})
+        -[r:ASCOLTA {time_range: $time_range}]->
+        (:Brano)<-[:ESEGUE]-(a:Artista)
+        RETURN DISTINCT a.nome as name, a.spotify_id as id, a.popolarita as popularity,
+               a.followers as followers, a.immagini as images, a.external_urls as external_urls
+        ORDER BY a.popolarita DESC
+        LIMIT $limit
+        """
+        
+        db_artists = neo4j_db.execute_query(query, {
+            "spotify_user_id": spotify_user_id,
+            "time_range": time_range,
+            "limit": limit
+        })
+        
+        if db_artists:
+            # Formatta i dati dal database nel formato Spotify API
+            artists_items = []
+            for record in db_artists:
+                artists_items.append({
+                    "id": record["id"],
+                    "name": record["name"],
+                    "popularity": record["popularity"],
+                    "followers": {"total": record["followers"]} if record["followers"] else {"total": 0},
+                    "images": [{"url": url} for url in (record["images"] or [])],
+                    "external_urls": record["external_urls"] or {}
+                })
+            
+            return {
+                "time_range": time_range,
+                "total": len(artists_items),
+                "limit": limit,
+                "artists": artists_items,
+                "source": "database"
+            }
+        
+        # Se non ci sono dati nel database, usa Spotify API
         top_artists = await spotify_client.get_user_top_artists(
             spotify_token, 
             time_range=time_range, 
@@ -69,7 +112,8 @@ async def get_user_top_artists(
             "time_range": time_range,
             "total": top_artists.get("total", 0),
             "limit": limit,
-            "artists": top_artists.get("items", [])
+            "artists": top_artists.get("items", []),
+            "source": "spotify_api"
         }
         
     except Exception as e:
@@ -86,7 +130,7 @@ async def get_user_top_tracks(
     current_user: dict = Depends(get_current_active_user),
     spotify_token: str = Depends(get_valid_spotify_token)
 ):
-    """Ottiene i top tracks dell'utente da Spotify"""
+    """Ottiene i top tracks dell'utente dal database Neo4j o da Spotify se non disponibili"""
     try:
         if time_range not in ["short_term", "medium_term", "long_term"]:
             raise HTTPException(
@@ -96,7 +140,75 @@ async def get_user_top_tracks(
         
         if limit > 50:
             limit = 50
+            
+        spotify_user_id = current_user["spotify_user_id"]
         
+        # Prima prova a leggere dal database Neo4j
+        from app.database.connection import neo4j_db
+        
+        query = """
+        MATCH (u:Utente {spotify_user_id: $spotify_user_id})
+        -[r:ASCOLTA {time_range: $time_range}]->(t:Brano)
+        OPTIONAL MATCH (t)<-[:CONTIENE]-(al:Album)
+        OPTIONAL MATCH (t)<-[:ESEGUE]-(ar:Artista)
+        RETURN t.nome as name, t.spotify_id as id, t.popolarita as popularity,
+               t.durata_ms as duration_ms, t.preview_url as preview_url,
+               t.external_urls as external_urls,
+               al.nome as album_name, al.spotify_id as album_id, al.immagini as album_images,
+               collect(DISTINCT ar.nome) as artist_names, collect(DISTINCT ar.spotify_id) as artist_ids
+        ORDER BY t.popolarita DESC
+        LIMIT $limit
+        """
+        
+        db_tracks = neo4j_db.execute_query(query, {
+            "spotify_user_id": spotify_user_id,
+            "time_range": time_range,
+            "limit": limit
+        })
+        
+        if db_tracks:
+            # Formatta i dati dal database nel formato Spotify API
+            tracks_items = []
+            for record in db_tracks:
+                # Costruisci l'oggetto artisti
+                artists = []
+                if record["artist_names"] and record["artist_ids"]:
+                    for i, name in enumerate(record["artist_names"]):
+                        if i < len(record["artist_ids"]):
+                            artists.append({
+                                "id": record["artist_ids"][i],
+                                "name": name
+                            })
+                
+                # Costruisci l'oggetto album
+                album = None
+                if record["album_name"]:
+                    album = {
+                        "id": record["album_id"],
+                        "name": record["album_name"],
+                        "images": [{"url": url} for url in (record["album_images"] or [])]
+                    }
+                
+                tracks_items.append({
+                    "id": record["id"],
+                    "name": record["name"],
+                    "popularity": record["popularity"],
+                    "duration_ms": record["duration_ms"],
+                    "preview_url": record["preview_url"],
+                    "external_urls": record["external_urls"] or {},
+                    "artists": artists,
+                    "album": album
+                })
+            
+            return {
+                "time_range": time_range,
+                "total": len(tracks_items),
+                "limit": limit,
+                "tracks": tracks_items,
+                "source": "database"
+            }
+        
+        # Se non ci sono dati nel database, usa Spotify API
         top_tracks = await spotify_client.get_user_top_tracks(
             spotify_token,
             time_range=time_range,
@@ -107,7 +219,8 @@ async def get_user_top_tracks(
             "time_range": time_range,
             "total": top_tracks.get("total", 0),
             "limit": limit,
-            "tracks": top_tracks.get("items", [])
+            "tracks": top_tracks.get("items", []),
+            "source": "spotify_api"
         }
         
     except Exception as e:
@@ -194,14 +307,20 @@ async def get_import_status(
 async def _background_import_task(spotify_user_id: str, spotify_token: str):
     """Task in background per l'import dei dati"""
     try:
-        logger.info(f"Starting background import for user {spotify_user_id}")
+        logger.info(f"🚀 Starting background import for user {spotify_user_id}")
         
         result = await spotify_ingestion_service.import_user_data(
             spotify_user_id, 
             spotify_token
         )
         
-        logger.info(f"Background import completed for user {spotify_user_id}: {result}")
+        logger.info(f"✅ Background import completed for user {spotify_user_id}")
+        logger.info(f"📊 Import results: {result}")
+        
+        # Stampa anche sulla console per debug
+        print(f"✅ Import completed for {spotify_user_id}: {result}")
         
     except Exception as e:
-        logger.error(f"Background import failed for user {spotify_user_id}: {str(e)}")
+        logger.error(f"❌ Background import failed for user {spotify_user_id}: {str(e)}")
+        print(f"❌ Import failed for {spotify_user_id}: {str(e)}")
+        raise

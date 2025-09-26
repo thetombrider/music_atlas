@@ -10,7 +10,7 @@ import type {
   ApiResponse
 } from '../types/api';
 
-const API_BASE_URL = 'https://music-atlas-1758921214.loca.lt/api/v1';
+const API_BASE_URL = 'http://localhost:8002/api/v1';
 
 // Create axios instance
 const api = axios.create({
@@ -18,6 +18,7 @@ const api = axios.create({
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true',
   },
 });
 
