@@ -38,9 +38,11 @@ async def shutdown_event():
         logger.error(f"Error during shutdown: {str(e)}")
 
 # Configure CORS
+logger.info(f"CORS Origins loaded: {settings.CORS_ORIGINS}")
+cors_origins = settings.CORS_ORIGINS + ["http://localhost:5173", "http://127.0.0.1:5173"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
