@@ -15,7 +15,7 @@ export interface SpotifyAuthResponse {
     display_name: string;
     email: string;
     images: { url: string; height?: number; width?: number }[];
-    followers: number;
+    followers: number | { href: string | null; total: number };
   };
 }
 
@@ -25,16 +25,11 @@ export interface SpotifyLoginResponse {
 }
 
 export interface User {
-  spotify_user_id: string;
-  user_profile: {
-    id: string;
-    display_name: string;
-    email: string;
-    images: { url: string; height?: number; width?: number }[];
-    followers: number;
-  };
-  token_valid: boolean;
-  expires_at: number;
+  id: string;
+  display_name: string;
+  email: string;
+  images: { url: string; height?: number; width?: number }[];
+  followers: number | { href: string | null; total: number };
 }
 
 // Music Types

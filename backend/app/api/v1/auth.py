@@ -45,25 +45,25 @@ async def spotify_login():
             detail="Failed to generate Spotify authorization URL"
         )
 
-@router.post("/spotify/callback")
-async def spotify_callback(callback_data: SpotifyAuthCallback):
+@router.get("/spotify/callback")
+async def spotify_callback(code: str, state: str = None):
     """Gestisce il callback OAuth2 da Spotify"""
     try:
         # Verifica state token
-        if callback_data.state and callback_data.state in auth_states:
-            state_data = auth_states[callback_data.state]
+        if state and state in auth_states:
+            state_data = auth_states[state]
             if state_data["used"]:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="State token already used"
                 )
             # Marca come usato
-            auth_states[callback_data.state]["used"] = True
+            auth_states[state]["used"] = True
         else:
             logger.warning("Invalid or missing state token in callback")
         
         # Scambia codice con token
-        tokens = await spotify_client.exchange_code_for_token(callback_data.code)
+        tokens = await spotify_client.exchange_code_for_token(code)
         
         # Ottieni profilo utente
         user_profile = await spotify_client.get_user_profile(tokens["access_token"])
@@ -89,18 +89,11 @@ async def spotify_callback(callback_data: SpotifyAuthCallback):
         
         access_token = jwt_handler.create_access_token(jwt_payload)
         
-        return {
-            "access_token": access_token,
-            "token_type": "bearer",
-            "spotify_user_id": spotify_user_id,
-            "user_profile": {
-                "id": user_profile["id"],
-                "display_name": user_profile.get("display_name"),
-                "email": user_profile.get("email"),
-                "images": user_profile.get("images", []),
-                "followers": user_profile.get("followers", {}).get("total", 0)
-            }
-        }
+        # Reindirizza al frontend con il token
+        frontend_url = f"http://localhost:5173/auth/callback?token={access_token}&user_id={spotify_user_id}"
+        
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url=frontend_url, status_code=302)
         
     except Exception as e:
         logger.error(f"Error in spotify_callback: {str(e)}")

@@ -10,7 +10,7 @@ import type {
   ApiResponse
 } from '../types/api';
 
-const API_BASE_URL = 'http://localhost:8002/api/v1';
+const API_BASE_URL = 'https://music-atlas-1758921214.loca.lt/api/v1';
 
 // Create axios instance
 const api = axios.create({
@@ -38,116 +38,89 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token scaduto, rimuovi dal localStorage
+      // Token scaduto, rimuovi e reindirizza al login
       localStorage.removeItem('access_token');
-      localStorage.removeItem('user_data');
+      localStorage.removeItem('refresh_token');
       window.location.href = '/';
     }
     return Promise.reject(error);
   }
 );
 
-// Auth API
+// Auth API endpoints
 export const authAPI = {
-  // Inizia il login Spotify
-  async initiateSpotifyLogin(): Promise<SpotifyLoginResponse> {
-    const response = await api.get<SpotifyLoginResponse>('/auth/spotify/login');
+  initiateSpotifyLogin: async (): Promise<SpotifyLoginResponse> => {
+    const response = await api.get('/auth/spotify/login');
     return response.data;
   },
 
-  // Gestisce callback OAuth
-  async handleSpotifyCallback(code: string, state?: string): Promise<SpotifyAuthResponse> {
-    const response = await api.post<SpotifyAuthResponse>('/auth/spotify/callback', {
+  handleSpotifyCallback: async (code: string, state?: string): Promise<SpotifyAuthResponse> => {
+    const response = await api.post('/auth/spotify/callback', {
       code,
       state,
     });
     return response.data;
   },
 
-  // Ottieni info utente corrente
-  async getCurrentUser(): Promise<User> {
-    const response = await api.get<User>('/auth/me');
+  getCurrentUser: async (): Promise<User> => {
+    const response = await api.get('/auth/me');
     return response.data;
   },
 
-  // Refresh token
-  async refreshToken(): Promise<{ message: string; expires_at: number }> {
-    const response = await api.post('/auth/refresh');
-    return response.data;
+  refreshToken: async (): Promise<void> => {
+    await api.post('/auth/refresh');
   },
 
-  // Logout
-  async logout(): Promise<{ message: string }> {
-    const response = await api.post('/auth/logout');
-    return response.data;
+  logout: async (): Promise<void> => {
+    await api.post('/auth/logout');
   },
 };
 
-// Music API
+// Music API endpoints
 export const musicAPI = {
-  // Importa dati utente nel knowledge graph
-  async importUserData(): Promise<{ message: string; spotify_user_id: string; status: string }> {
+  importUserData: async (): Promise<ApiResponse<any>> => {
     const response = await api.post('/music/import');
     return response.data;
   },
 
-  // Ottieni top artists
-  async getTopArtists(timeRange: 'short_term' | 'medium_term' | 'long_term' = 'medium_term', limit = 20): Promise<TopItemsResponse<Artist>> {
-    const response = await api.get<TopItemsResponse<Artist>>('/music/top-artists', {
-      params: { time_range: timeRange, limit },
-    });
+  getImportStatus: async (): Promise<ImportStatus> => {
+    const response = await api.get('/music/import-status');
     return response.data;
   },
 
-  // Ottieni top tracks
-  async getTopTracks(timeRange: 'short_term' | 'medium_term' | 'long_term' = 'medium_term', limit = 20): Promise<TopItemsResponse<Track>> {
-    const response = await api.get<TopItemsResponse<Track>>('/music/top-tracks', {
-      params: { time_range: timeRange, limit },
-    });
+  getTopArtists: async (timeRange: 'short_term' | 'medium_term' | 'long_term' = 'medium_term'): Promise<TopItemsResponse<Artist>> => {
+    const response = await api.get(`/music/top-artists?time_range=${timeRange}`);
     return response.data;
   },
 
-  // Ottieni profilo Spotify
-  async getSpotifyProfile(): Promise<{ spotify_profile: any }> {
-    const response = await api.get('/music/profile');
-    return response.data;
-  },
-
-  // Ottieni stato import
-  async getImportStatus(): Promise<ImportStatus> {
-    const response = await api.get<ImportStatus>('/music/import-status');
+  getTopTracks: async (timeRange: 'short_term' | 'medium_term' | 'long_term' = 'medium_term'): Promise<TopItemsResponse<Track>> => {
+    const response = await api.get(`/music/top-tracks?time_range=${timeRange}`);
     return response.data;
   },
 };
 
-// Utility functions
+// Auth utilities
 export const authUtils = {
-  // Salva token nel localStorage
-  saveAuthData(authResponse: SpotifyAuthResponse) {
-    localStorage.setItem('access_token', authResponse.access_token);
-    localStorage.setItem('user_data', JSON.stringify(authResponse.user_profile));
+  isAuthenticated: (): boolean => {
+    return !!localStorage.getItem('access_token');
   },
 
-  // Ottieni token dal localStorage
-  getToken(): string | null {
+  saveAuthData: (authResponse: SpotifyAuthResponse): void => {
+    localStorage.setItem('access_token', authResponse.access_token);
+    // Note: SpotifyAuthResponse doesn't include refresh_token for now
+  },
+
+  clearAuthData: (): void => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+  },
+
+  getAccessToken: (): string | null => {
     return localStorage.getItem('access_token');
   },
 
-  // Ottieni dati utente dal localStorage
-  getUserData(): any {
-    const userData = localStorage.getItem('user_data');
-    return userData ? JSON.parse(userData) : null;
-  },
-
-  // Controlla se l'utente è autenticato
-  isAuthenticated(): boolean {
-    return !!this.getToken();
-  },
-
-  // Logout completo
-  clearAuthData() {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('user_data');
+  getRefreshToken: (): string | null => {
+    return localStorage.getItem('refresh_token');
   },
 };
 

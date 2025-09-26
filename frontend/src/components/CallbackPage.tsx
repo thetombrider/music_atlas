@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useAuth } from '../hooks/useAuth';
 
 const CallbackPage: React.FC = () => {
-  const { handleCallback } = useAuth();
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing');
   const [error, setError] = useState<string | null>(null);
 
@@ -11,20 +9,24 @@ const CallbackPage: React.FC = () => {
       try {
         // Estrai parametri dall'URL
         const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get('code');
-        const state = urlParams.get('state');
+        const token = urlParams.get('token');
+        const userId = urlParams.get('user_id');
         const errorParam = urlParams.get('error');
 
         if (errorParam) {
           throw new Error(`Spotify authorization error: ${errorParam}`);
         }
 
-        if (!code) {
-          throw new Error('Authorization code not found');
+        if (!token) {
+          throw new Error('Access token not found');
         }
 
-        // Gestisci il callback
-        await handleCallback(code, state || undefined);
+        // Salva il token direttamente (il backend ha già processato tutto)
+        localStorage.setItem('access_token', token);
+        if (userId) {
+          localStorage.setItem('spotify_user_id', userId);
+        }
+        
         setStatus('success');
 
         // Reindirizza alla dashboard dopo 2 secondi
@@ -40,7 +42,7 @@ const CallbackPage: React.FC = () => {
     };
 
     processCallback();
-  }, [handleCallback]);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4">

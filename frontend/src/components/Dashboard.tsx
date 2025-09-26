@@ -203,7 +203,11 @@ const Dashboard: React.FC = () => {
                   )}
                   <div>
                     <div className="font-medium">{user.user_profile.display_name}</div>
-                    <div className="text-sm text-gray-400">{user.user_profile.followers || 0} follower</div>
+                    <div className="text-sm text-gray-400">
+                      {typeof user.user_profile.followers === 'object' 
+                        ? user.user_profile.followers?.total || 0 
+                        : user.user_profile.followers || 0} follower
+                    </div>
                     <div className="text-sm text-gray-400">ID: {user.user_profile.id}</div>
                   </div>
                 </div>
