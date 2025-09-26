@@ -8,10 +8,14 @@ import os
 import sys
 from neo4j import GraphDatabase
 from typing import List, Dict, Any
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Configurazione
 NEO4J_URI = os.getenv("NEO4J_URI", "neo4j+s://your-instance.databases.neo4j.io")
-NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
+NEO4J_USER = os.getenv("NEO4J_USERNAME", "neo4j")  # Updated to match .env file
 NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "")
 
 class DatabaseInitializer:
@@ -105,16 +109,21 @@ class DatabaseInitializer:
             for node_type, count in counts.items():
                 print(f"  {node_type}: {count} nodi")
             
-            # Verifica constraint
-            result = session.run("CALL db.constraints() YIELD name")
-            constraints = [record["name"] for record in result]
-            print(f"\n🔒 Constraint attivi: {len(constraints)}")
+            # Verifica constraint (compatibile con AuraDB)
+            try:
+                result = session.run("SHOW CONSTRAINTS")
+                constraints = list(result)
+                print(f"\n🔒 Constraint attivi: {len(constraints)}")
+            except Exception:
+                print(f"\n🔒 Constraint: Non disponibile (AuraDB)")
             
-            # Verifica indici
-            result = session.run("CALL db.indexes() YIELD name, state")
-            indexes = [(record["name"], record["state"]) for record in result]
-            online_indexes = [idx for idx in indexes if idx[1] == "ONLINE"]
-            print(f"📈 Indici online: {len(online_indexes)}")
+            # Verifica indici (compatibile con AuraDB)
+            try:
+                result = session.run("SHOW INDEXES")
+                indexes = list(result)
+                print(f"📈 Indici: {len(indexes)}")
+            except Exception:
+                print(f"📈 Indici: Non disponibile (AuraDB)")
     
     def clear_database(self):
         """ATTENZIONE: Cancella tutti i dati dal database. Usare solo in sviluppo!"""
@@ -131,7 +140,7 @@ def main():
         print("❌ Errore: NEO4J_PASSWORD non configurata")
         print("Configura le variabili d'ambiente:")
         print("  export NEO4J_URI=neo4j+s://your-instance.databases.neo4j.io")
-        print("  export NEO4J_USER=neo4j")
+        print("  export NEO4J_USERNAME=neo4j")
         print("  export NEO4J_PASSWORD=your-password")
         sys.exit(1)
     

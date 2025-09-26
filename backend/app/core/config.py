@@ -21,8 +21,9 @@ class Settings(BaseSettings):
     
     # Neo4j Database
     NEO4J_URI: str = "neo4j+s://localhost:7687"
-    NEO4J_USER: str = "neo4j"
+    NEO4J_USERNAME: str = "neo4j"  # Changed from NEO4J_USER
     NEO4J_PASSWORD: str = ""
+    NEO4J_DATABASE: str = "neo4j"
     NEO4J_MAX_CONNECTION_POOL_SIZE: int = 100
     NEO4J_CONNECTION_ACQUISITION_TIMEOUT: int = 60
     
@@ -60,9 +61,10 @@ class Settings(BaseSettings):
     RATE_LIMIT_PER_MINUTE: int = 60
     
     class Config:
-        env_file = ".env"
+        env_file = "../.env"  # Look for .env in parent directory
         env_file_encoding = "utf-8"
         case_sensitive = True
+        extra = "ignore"  # Ignore extra environment variables
 
 # Create global settings instance
 settings = Settings()
