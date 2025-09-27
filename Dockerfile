@@ -28,15 +28,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy backend code
 COPY backend/ ./backend/
 
-# Copy start script
-COPY start.sh ./
-RUN chmod +x start.sh
-
 # Copy built frontend
 COPY --from=frontend-build /app/frontend/dist ./static
 
 # Expose port
 EXPOSE 8000
 
-# Start command
-CMD ["./start.sh"]
+# Start command - porta fissa 8000
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
