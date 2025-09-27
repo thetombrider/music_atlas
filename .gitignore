@@ -158,3 +158,12 @@ dist/
 .coverage
 htmlcov/
 .pytest_cache/
+
+# Deployment files (keeping only Railway)
+vercel.json
+netlify.toml
+render.yaml
+Procfile
+app.yaml
+.platform/
+static/
