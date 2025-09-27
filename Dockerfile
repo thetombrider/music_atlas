@@ -28,6 +28,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy backend code
 COPY backend/ ./backend/
 
+# Copy start script
+COPY start.sh ./
+RUN chmod +x start.sh
+
 # Copy built frontend
 COPY --from=frontend-build /app/frontend/dist ./static
 
@@ -35,4 +39,4 @@ COPY --from=frontend-build /app/frontend/dist ./static
 EXPOSE 8000
 
 # Start command
-CMD ["sh", "start.sh"]
+CMD ["./start.sh"]
