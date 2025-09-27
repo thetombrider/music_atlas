@@ -81,10 +81,13 @@ export const useAuth = () => {
       
       // Aggiorna lo stato locale
       const user: User = {
+        id: authResponse.user_profile.id,
         spotify_user_id: authResponse.spotify_user_id,
+        display_name: authResponse.user_profile.display_name,
+        email: authResponse.user_profile.email,
+        images: authResponse.user_profile.images,
+        followers: authResponse.user_profile.followers,
         user_profile: authResponse.user_profile,
-        token_valid: true,
-        expires_at: Date.now() + 3600000, // 1 ora da ora
       };
       
       setState({

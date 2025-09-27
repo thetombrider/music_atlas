@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth, useMusic } from '../hooks/useAuth';
-import type { Artist, Track, TopItemsResponse } from '../types/api';
+import type { Artist, Track } from '../types/api';
 
 const Dashboard: React.FC = () => {
   const { user, logout, loading: authLoading } = useAuth();

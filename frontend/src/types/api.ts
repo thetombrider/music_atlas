@@ -26,10 +26,18 @@ export interface SpotifyLoginResponse {
 
 export interface User {
   id: string;
+  spotify_user_id: string;
   display_name: string;
   email: string;
   images: { url: string; height?: number; width?: number }[];
   followers: number | { href: string | null; total: number };
+  user_profile: {
+    id: string;
+    display_name: string;
+    email: string;
+    images: { url: string; height?: number; width?: number }[];
+    followers: number | { href: string | null; total: number };
+  };
 }
 
 // Music Types

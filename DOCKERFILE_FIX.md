@@ -14,9 +14,17 @@ sh: tsc: not found
 ERROR: process "/bin/sh -c npm run build" did not complete successfully: exit code: 127
 ```
 
+### 3. Errori TypeScript nel Frontend
+```
+error TS2339: Property 'user_profile' does not exist on type 'User'
+error TS2300: Duplicate identifier 'SpotifyLoginResponse'
+error TS6196: 'TopItemsResponse' is declared but never used
+```
+
 **Cause**: 
 1. Il Dockerfile cercava di copiare la cartella `api/` rimossa
 2. `npm ci --only=production` non installa devDependencies (include TypeScript)
+3. File di backup duplicati e interfacce incomplete nel frontend
 
 ## ✅ Correzioni Applicate
 
@@ -28,6 +36,15 @@ COPY api/ ./api/          # ❌ Cartella non esiste più
 
 # Dopo  
 COPY backend/ ./backend/  # ✅ Solo backend necessario
+```
+
+### 2. Fixed npm install per includere TypeScript
+```dockerfile
+# Prima
+RUN npm ci --only=production  # ❌ Non installa devDependencies (TypeScript)
+
+# Dopo
+RUN npm ci                    # ✅ Installa tutto incluso TypeScript
 ```
 
 ### 2. Corretto comando di avvio
@@ -61,7 +78,7 @@ FROM node:18-alpine AS frontend-build
 
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
-RUN npm ci --only=production
+RUN npm ci
 COPY frontend/ ./
 RUN npm run build
 
