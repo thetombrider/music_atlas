@@ -10,7 +10,9 @@ import type {
   ApiResponse
 } from '../types/api';
 
-const API_BASE_URL = '/api/v1';
+const API_BASE_URL = window.location.hostname === 'localhost' 
+  ? 'http://localhost:8002/api/v1'  // In locale
+  : '/api/v1';  // In production su Vercel
 
 // Create axios instance
 const api = axios.create({
