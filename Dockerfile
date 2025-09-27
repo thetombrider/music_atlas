@@ -34,5 +34,6 @@ COPY --from=frontend-build /app/frontend/dist ./static
 # Expose port
 EXPOSE 8000
 
-# Start command - usa PORT di Railway o fallback 8000
-CMD ["sh", "-c", "uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Copy and run server script
+COPY run_server.py ./
+CMD ["python", "run_server.py"]
