@@ -35,4 +35,4 @@ COPY --from=frontend-build /app/frontend/dist ./static
 EXPOSE 8000
 
 # Start command
-CMD ["sh", "-c", "uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "start.sh"]
