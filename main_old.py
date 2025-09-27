@@ -1,12 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 from app.core.config import settings
 from app.api.v1.router import api_router
 from app.database.connection import neo4j_db
 import logging
-import os
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -25,8 +22,8 @@ app = FastAPI(
 async def startup_event():
     """Initialize database connection on startup"""
     try:
-        neo4j_db.connect()
-        logger.info("Application startup completed")
+        # Neo4j temporaneamente disabilitato per testare Spotify
+        logger.info("Application startup completed (Neo4j disabled for testing)")
     except Exception as e:
         logger.error(f"Failed to initialize database connection: {str(e)}")
         raise
@@ -35,7 +32,7 @@ async def startup_event():
 async def shutdown_event():
     """Close database connection on shutdown"""
     try:
-        neo4j_db.close()
+        # neo4j_db.close()  # Temporaneamente disabilitato
         logger.info("Application shutdown completed")
     except Exception as e:
         logger.error(f"Error during shutdown: {str(e)}")
@@ -58,36 +55,10 @@ app.add_middleware(
 # Include API router
 app.include_router(api_router, prefix="/api/v1")
 
-# Serve static files (frontend)
-static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
-if os.path.exists(static_dir):
-    app.mount("/static", StaticFiles(directory=static_dir), name="static")
-    
-    @app.get("/")
-    async def serve_frontend():
-        """Serve the React frontend"""
-        index_path = os.path.join(static_dir, "index.html")
-        if os.path.exists(index_path):
-            return FileResponse(index_path)
-        return {"message": "Music Atlas API is running", "version": "1.0.0"}
-    
-    # Catch-all route for React Router (SPA)
-    @app.get("/{path:path}")
-    async def catch_all(path: str):
-        """Catch-all route for React Router"""
-        # Skip API routes
-        if path.startswith("api/"):
-            return {"error": "Not found"}
-        
-        index_path = os.path.join(static_dir, "index.html")
-        if os.path.exists(index_path):
-            return FileResponse(index_path)
-        return {"error": "Not found"}
-else:
-    @app.get("/")
-    async def root():
-        """Health check endpoint"""
-        return {"message": "Music Atlas API is running", "version": "1.0.0"}
+@app.get("/")
+async def root():
+    """API root endpoint"""
+    return {"message": "Music Atlas API is running", "version": "1.0.0"}
 
 @app.get("/health")
 async def health_check():
