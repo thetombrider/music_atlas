@@ -1,16 +1,16 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from mangum import Mangum
 import sys
 import os
 
 # Add backend to path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'backend'))
+sys.path.append(os.path.join(os.path.dirname(__file__), 'backend'))
 
 try:
     from backend.main import app
 except ImportError:
-    # Create a minimal FastAPI app for Vercel
+    # If backend import fails, create a minimal app
+    from fastapi import FastAPI
+    from fastapi.middleware.cors import CORSMiddleware
+    
     app = FastAPI(title="Music Atlas API", version="1.0.0")
     
     # Configure CORS
@@ -29,6 +29,3 @@ except ImportError:
     @app.get("/health")
     async def health_check():
         return {"status": "healthy", "service": "music-atlas-api"}
-
-# Wrap FastAPI app with Mangum for serverless
-handler = Mangum(app)
